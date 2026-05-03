@@ -1,6 +1,7 @@
 # n8n-nodes-do-while
 
 [![npm version](https://badge.fury.io/js/n8n-nodes-do-while.svg)](https://www.npmjs.com/package/n8n-nodes-do-while)
+[![npm downloads](https://img.shields.io/npm/dm/n8n-nodes-do-while.svg)](https://www.npmjs.com/package/n8n-nodes-do-while)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![n8n community node](https://img.shields.io/badge/n8n-community%20node-orange)](https://www.npmjs.com/package/n8n-nodes-do-while)
 
