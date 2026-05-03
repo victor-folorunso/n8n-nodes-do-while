@@ -1,0 +1,165 @@
+{
+  "name": "Poll Any Job Status Until Complete Using Do...While",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-400, 0],
+      "id": "465a519c-d663-47a7-ac0f-f31fb8ac5fa5",
+      "name": "When clicking 'Execute workflow'"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "init-001",
+              "name": "counter",
+              "value": 0,
+              "type": "number"
+            },
+            {
+              "id": "init-002",
+              "name": "status",
+              "value": "pending",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-160, 0],
+      "id": "init-node-001",
+      "name": "Set Initial State"
+    },
+    {
+      "parameters": {
+        "condition": "={{ $json.status === 'done' }}",
+        "maxIterations": 10,
+        "waitSeconds": 1,
+        "maxBehavior": "exit"
+      },
+      "type": "n8n-nodes-do-while.doWhile",
+      "typeVersion": 1,
+      "position": [80, 0],
+      "id": "8b0943a5-5307-4c38-9d05-0ffadfa9b37a",
+      "name": "Do...While: Wait for Job"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Replace this Code node with an HTTP Request to your actual API.\n// This simulation flips status to 'done' after 3 checks.\n\nconst item = $input.first().json;\nconst counter = (item.counter || 0) + 1;\nconst status = counter >= 3 ? 'done' : 'pending';\n\nreturn [{\n  json: {\n    counter,\n    status,\n    message: status === 'done'\n      ? 'Job completed successfully!'\n      : `Still processing... (check ${counter} of 3)`\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [80, 240],
+      "id": "code-node-001",
+      "name": "Check Job Status (Replace Me)"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "result-001",
+              "name": "result",
+              "value": "={{ $json._loop.timedOut ? 'Timed out after ' + $json._loop.iteration + ' attempts' : 'Completed after ' + ($json._loop.iteration + 1) + ' attempts' }}",
+              "type": "string"
+            },
+            {
+              "id": "result-002",
+              "name": "timedOut",
+              "value": "={{ $json._loop.timedOut }}",
+              "type": "boolean"
+            },
+            {
+              "id": "result-003",
+              "name": "totalAttempts",
+              "value": "={{ $json._loop.iteration + 1 }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [340, 0],
+      "id": "result-node-001",
+      "name": "Process Result"
+    },
+    {
+      "parameters": {
+        "content": "## Poll Any Job Status Until Complete\n\nThis workflow keeps checking a job status until it reports as done, then continues.\n\nA real-world example: you trigger a video export, a report generation, or an AI task in an external service. Those operations take time. Instead of waiting a fixed amount, this workflow keeps checking and continues the moment the job is ready.\n\n**How to adapt this for your use case:**\nReplace the \"Check Job Status\" Code node with an HTTP Request node pointing to your API status endpoint. Make sure the response contains a field you can check in the Do...While condition.\n\nFor example, if your API returns `{ \"state\": \"complete\" }` change the condition to:\n`={{ $json.state === 'complete' }}`",
+        "height": 340,
+        "width": 500,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-400, -400],
+      "id": "sticky-overview",
+      "name": "Overview"
+    },
+    {
+      "parameters": {
+        "content": "## Do...While Node\n\n**Condition:** `$json.status === 'done'`\nChecked after every iteration. When true, items exit via Condition Met.\n\n**Wait:** 1 second between each check.\nIncrease this when polling slow APIs to avoid hammering the endpoint.\n\n**Max Iterations:** 10\nIf the job never finishes, items exit here with `_loop.timedOut = true` instead of looping forever.\n\n**Condition Met pin** goes to Process Result.\n**Loop pin** goes to Check Job Status and back.",
+        "height": 300,
+        "width": 340,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-60, -400],
+      "id": "sticky-dowhile",
+      "name": "Do...While Config"
+    },
+    {
+      "parameters": {
+        "content": "## Check Job Status\n\nThis is a simulation. Replace it with an HTTP Request node calling your API status endpoint.\n\nThe node must return a JSON object containing the field your condition checks. In this example that field is `status`.\n\nThe counter and status fields are passed back into Do...While on each iteration so the loop has fresh data to evaluate.",
+        "height": 220,
+        "width": 340,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-60, 320],
+      "id": "sticky-code",
+      "name": "Replace This Node"
+    },
+    {
+      "parameters": {
+        "content": "## Process Result\n\nBy the time items reach here the loop has finished.\n\nCheck `_loop.timedOut` to know whether the job completed or the loop hit max iterations:\n\n- `timedOut: false` means the condition was met. Continue normally.\n- `timedOut: true` means the job never finished in time. Handle this separately.\n\nAdd an IF node after this to branch based on `$json.timedOut`.",
+        "height": 260,
+        "width": 340,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [200, -400],
+      "id": "sticky-result",
+      "name": "Handling the Result"
+    }
+  ],
+  "connections": {
+    "When clicking 'Execute workflow'": {
+      "main": [[{ "node": "Set Initial State", "type": "main", "index": 0 }]]
+    },
+    "Set Initial State": {
+      "main": [[{ "node": "Do...While: Wait for Job", "type": "main", "index": 0 }]]
+    },
+    "Do...While: Wait for Job": {
+      "main": [
+        [{ "node": "Process Result", "type": "main", "index": 0 }],
+        [{ "node": "Check Job Status (Replace Me)", "type": "main", "index": 0 }]
+      ]
+    },
+    "Check Job Status (Replace Me)": {
+      "main": [[{ "node": "Do...While: Wait for Job", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "meta": { "instanceId": "" }
+}

@@ -1,0 +1,92 @@
+{
+  "name": "Retry a Failing HTTP Request Until Success Using Do...While",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-400, 0],
+      "id": "retry-trigger-001",
+      "name": "When clicking 'Execute workflow'"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "r-001", "name": "success", "value": false, "type": "boolean" },
+            { "id": "r-002", "name": "attempts", "value": 0, "type": "number" }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-160, 0],
+      "id": "retry-init-001",
+      "name": "Set Initial State"
+    },
+    {
+      "parameters": {
+        "condition": "={{ $json.success === true }}",
+        "maxIterations": 5,
+        "waitSeconds": 3,
+        "maxBehavior": "exit"
+      },
+      "type": "n8n-nodes-do-while.doWhile",
+      "typeVersion": 1,
+      "position": [80, 0],
+      "id": "retry-dowhile-001",
+      "name": "Do...While: Retry Until Success"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Replace with your actual HTTP Request node.\n// This simulates a flaky API that succeeds on the 3rd attempt.\n\nconst item = $input.first().json;\nconst attempts = (item.attempts || 0) + 1;\nconst success = attempts >= 3;\n\nreturn [{ json: { attempts, success, error: success ? null : 'Service unavailable' } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [80, 240],
+      "id": "retry-code-001",
+      "name": "Call API (Replace Me)"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "retry-r-001",
+              "name": "outcome",
+              "value": "={{ $json._loop.timedOut ? 'Failed after ' + $json._loop.max + ' attempts' : 'Succeeded on attempt ' + ($json._loop.iteration + 1) }}",
+              "type": "string"
+            },
+            { "id": "retry-r-002", "name": "timedOut", "value": "={{ $json._loop.timedOut }}", "type": "boolean" }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [340, 0],
+      "id": "retry-result-001",
+      "name": "Handle Outcome"
+    }
+  ],
+  "connections": {
+    "When clicking 'Execute workflow'": {
+      "main": [[{ "node": "Set Initial State", "type": "main", "index": 0 }]]
+    },
+    "Set Initial State": {
+      "main": [[{ "node": "Do...While: Retry Until Success", "type": "main", "index": 0 }]]
+    },
+    "Do...While: Retry Until Success": {
+      "main": [
+        [{ "node": "Handle Outcome", "type": "main", "index": 0 }],
+        [{ "node": "Call API (Replace Me)", "type": "main", "index": 0 }]
+      ]
+    },
+    "Call API (Replace Me)": {
+      "main": [[{ "node": "Do...While: Retry Until Success", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "meta": { "instanceId": "" }
+}

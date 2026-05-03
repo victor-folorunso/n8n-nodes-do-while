@@ -1,0 +1,164 @@
+{
+  "name": "Do...While Test - Poll Until Done",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-400, 0],
+      "id": "465a519c-d663-47a7-ac0f-f31fb8ac5fa5",
+      "name": "When clicking 'Execute workflow'"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "init-001",
+              "name": "counter",
+              "value": 0,
+              "type": "number"
+            },
+            {
+              "id": "init-002",
+              "name": "status",
+              "value": "pending",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-160, 0],
+      "id": "init-node-001",
+      "name": "Initialise"
+    },
+    {
+      "parameters": {
+        "condition": "={{ $json.status === 'done' }}",
+        "maxIterations": 10,
+        "waitSeconds": 0,
+        "maxBehavior": "exit"
+      },
+      "type": "n8n-nodes-do-while.doWhile",
+      "typeVersion": 1,
+      "position": [80, 0],
+      "id": "8b0943a5-5307-4c38-9d05-0ffadfa9b37a",
+      "name": "Do...While"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst counter = (item.counter || 0) + 1;\n\n// Simulates a job that completes after 3 checks\nconst status = counter >= 3 ? 'done' : 'pending';\n\nconsole.log(`Check #${counter}: status = ${status}`);\n\nreturn [{\n  json: {\n    counter,\n    status,\n    message: status === 'done'\n      ? 'Job completed!'\n      : `Still processing... (check ${counter} of 3)`\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [80, 240],
+      "id": "code-node-001",
+      "name": "Simulate Job"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "result-001",
+              "name": "result",
+              "value": "={{ $json._loop.timedOut ? 'Timed out after ' + $json._loop.iteration + ' checks' : 'Done after ' + ($json._loop.iteration + 1) + ' checks' }}",
+              "type": "string"
+            },
+            {
+              "id": "result-002",
+              "name": "timedOut",
+              "value": "={{ $json._loop.timedOut }}",
+              "type": "boolean"
+            },
+            {
+              "id": "result-003",
+              "name": "totalChecks",
+              "value": "={{ $json._loop.iteration + 1 }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [340, 0],
+      "id": "result-node-001",
+      "name": "Done"
+    },
+    {
+      "parameters": {
+        "content": "## Do...While Test Workflow\n\nThis simulates a job that completes after 3 checks.\n\n**Flow:**\n1. Initialise sets counter = 0, status = pending\n2. Do...While checks if status === done\n3. If not done, Simulate Job increments counter\n4. After 3 checks, status flips to done\n5. Do...While exits via Condition Met pin\n6. Done outputs how many checks it took\n\n**Expected output:**\n- result: Done after 3 checks\n- timedOut: false\n- totalChecks: 3",
+        "height": 280,
+        "width": 420,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-400, -320],
+      "id": "sticky-001",
+      "name": "How This Works"
+    }
+  ],
+  "connections": {
+    "When clicking 'Execute workflow'": {
+      "main": [
+        [
+          {
+            "node": "Initialise",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialise": {
+      "main": [
+        [
+          {
+            "node": "Do...While",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Do...While": {
+      "main": [
+        [
+          {
+            "node": "Done",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Simulate Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simulate Job": {
+      "main": [
+        [
+          {
+            "node": "Do...While",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": ""
+  }
+}

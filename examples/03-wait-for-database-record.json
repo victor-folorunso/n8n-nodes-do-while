@@ -1,0 +1,92 @@
+{
+  "name": "Wait for a Database Record to Appear Using Do...While",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-400, 0],
+      "id": "db-trigger-001",
+      "name": "When clicking 'Execute workflow'"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "db-001", "name": "recordFound", "value": false, "type": "boolean" },
+            { "id": "db-002", "name": "data", "value": "", "type": "string" }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-160, 0],
+      "id": "db-init-001",
+      "name": "Set Initial State"
+    },
+    {
+      "parameters": {
+        "condition": "={{ $json.recordFound === true }}",
+        "maxIterations": 12,
+        "waitSeconds": 10,
+        "maxBehavior": "exit"
+      },
+      "type": "n8n-nodes-do-while.doWhile",
+      "typeVersion": 1,
+      "position": [80, 0],
+      "id": "db-dowhile-001",
+      "name": "Do...While: Wait for Record"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Replace with a Postgres, MySQL, or other database node.\n// Query your database and set recordFound based on whether data exists.\n// Example: SELECT * FROM jobs WHERE id = '123' AND status = 'ready'\n\nconst item = $input.first().json;\nconst checks = ($json._loop?.iteration || 0);\nconst recordFound = checks >= 2;\n\nreturn [{ json: { recordFound, data: recordFound ? { id: 123, status: 'ready' } : null } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [80, 240],
+      "id": "db-code-001",
+      "name": "Query Database (Replace Me)"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "db-r-001",
+              "name": "outcome",
+              "value": "={{ $json._loop.timedOut ? 'Record never appeared after ' + $json._loop.max + ' checks' : 'Record found after ' + ($json._loop.iteration + 1) + ' checks' }}",
+              "type": "string"
+            },
+            { "id": "db-r-002", "name": "timedOut", "value": "={{ $json._loop.timedOut }}", "type": "boolean" }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [340, 0],
+      "id": "db-result-001",
+      "name": "Process Record"
+    }
+  ],
+  "connections": {
+    "When clicking 'Execute workflow'": {
+      "main": [[{ "node": "Set Initial State", "type": "main", "index": 0 }]]
+    },
+    "Set Initial State": {
+      "main": [[{ "node": "Do...While: Wait for Record", "type": "main", "index": 0 }]]
+    },
+    "Do...While: Wait for Record": {
+      "main": [
+        [{ "node": "Process Record", "type": "main", "index": 0 }],
+        [{ "node": "Query Database (Replace Me)", "type": "main", "index": 0 }]
+      ]
+    },
+    "Query Database (Replace Me)": {
+      "main": [[{ "node": "Do...While: Wait for Record", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "meta": { "instanceId": "" }
+}

@@ -1,0 +1,128 @@
+{
+  "name": "Handle Timeout Gracefully with IF Node After Do...While",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-400, 0],
+      "id": "timeout-trigger-001",
+      "name": "When clicking 'Execute workflow'"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "to-001", "name": "ready", "value": false, "type": "boolean" }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-160, 0],
+      "id": "timeout-init-001",
+      "name": "Set Initial State"
+    },
+    {
+      "parameters": {
+        "condition": "={{ $json.ready === true }}",
+        "maxIterations": 3,
+        "waitSeconds": 1,
+        "maxBehavior": "exit"
+      },
+      "type": "n8n-nodes-do-while.doWhile",
+      "typeVersion": 1,
+      "position": [80, 0],
+      "id": "timeout-dowhile-001",
+      "name": "Do...While: Check Until Ready"
+    },
+    {
+      "parameters": {
+        "jsCode": "// This simulation never sets ready to true so the loop always times out.\n// Replace with your actual status check.\nreturn [{ json: { ready: false } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [80, 240],
+      "id": "timeout-code-001",
+      "name": "Check Status (Always Times Out)"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "if-001",
+              "leftValue": "={{ $json._loop.timedOut }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [340, 0],
+      "id": "timeout-if-001",
+      "name": "Did it Time Out?"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "to-alert-001", "name": "alert", "value": "Operation timed out. No response after max attempts.", "type": "string" }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [560, -80],
+      "id": "timeout-alert-001",
+      "name": "Send Timeout Alert"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "to-success-001", "name": "message", "value": "Completed successfully.", "type": "string" }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [560, 80],
+      "id": "timeout-success-001",
+      "name": "Continue Normally"
+    }
+  ],
+  "connections": {
+    "When clicking 'Execute workflow'": {
+      "main": [[{ "node": "Set Initial State", "type": "main", "index": 0 }]]
+    },
+    "Set Initial State": {
+      "main": [[{ "node": "Do...While: Check Until Ready", "type": "main", "index": 0 }]]
+    },
+    "Do...While: Check Until Ready": {
+      "main": [
+        [{ "node": "Did it Time Out?", "type": "main", "index": 0 }],
+        [{ "node": "Check Status (Always Times Out)", "type": "main", "index": 0 }]
+      ]
+    },
+    "Check Status (Always Times Out)": {
+      "main": [[{ "node": "Do...While: Check Until Ready", "type": "main", "index": 0 }]]
+    },
+    "Did it Time Out?": {
+      "main": [
+        [{ "node": "Send Timeout Alert", "type": "main", "index": 0 }],
+        [{ "node": "Continue Normally", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": { "instanceId": "" }
+}

@@ -1,0 +1,45 @@
+{
+  "name": "n8n-nodes-do-while",
+  "version": "0.1.0",
+  "description": "An n8n community node that implements a do...while loop — execute nodes repeatedly until a condition is met",
+  "keywords": [
+    "n8n-community-node-package",
+    "loop",
+    "while",
+    "do-while",
+    "condition",
+    "polling",
+    "iterate"
+  ],
+  "license": "MIT",
+  "author": "",
+  "homepage": "https://github.com/YOUR_GITHUB_USERNAME/n8n-nodes-do-while",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/YOUR_GITHUB_USERNAME/n8n-nodes-do-while"
+  },
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "credentials": [],
+    "nodes": [
+      "dist/DoWhile/DoWhile.node.js"
+    ]
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.17",
+    "n8n-workflow": "^2.16.0",
+    "typescript": "^5.9.3"
+  },
+  "peerDependencies": {
+    "n8n-workflow": "*"
+  }
+}
