@@ -268,7 +268,7 @@ Alternatively, set **On Max Iterations Reached** to **Throw Error** if hitting t
 
 ## Contributing
 
-Issues and pull requests are welcome on [GitHub](https://github.com/YOUR_GITHUB_USERNAME/n8n-nodes-do-while).
+Issues and pull requests are welcome on [GitHub](https://github.com/victor-folorunso/n8n-nodes-do-while).
 
 If you find a bug or want to request a feature, open an issue with a description of what you need and a workflow example if possible.
 

@@ -12,11 +12,11 @@
     "iterate"
   ],
   "license": "MIT",
-  "author": "",
-  "homepage": "https://github.com/YOUR_GITHUB_USERNAME/n8n-nodes-do-while",
+  "author": "Victor Folorunso",
+  "homepage": "https://github.com/victor-folorunso/n8n-nodes-do-while",
   "repository": {
     "type": "git",
-    "url": "https://github.com/YOUR_GITHUB_USERNAME/n8n-nodes-do-while"
+    "url": "https://github.com/victor-folorunso/n8n-nodes-do-while"
   },
   "main": "index.js",
   "scripts": {
