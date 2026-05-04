@@ -1,0 +1,186 @@
+{
+  "name": "Poll a Live Delayed API Until Response Using Do...While",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [192, 288],
+      "id": "4b0daa4c-5cad-495d-af11-a2081d780f35",
+      "name": "When clicking 'Execute workflow'"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "r-001", "name": "success", "value": false, "type": "boolean" },
+            { "id": "r-002", "name": "attempts", "value": 0, "type": "number" }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [416, 288],
+      "id": "e9f1aa2d-7b20-4daa-bb06-ee92a7de99e1",
+      "name": "Set Initial State"
+    },
+    {
+      "parameters": {
+        "condition": "={{ $json.success === true }}",
+        "maxIterations": 5,
+        "waitSeconds": 0,
+        "maxBehavior": "exit"
+      },
+      "type": "n8n-nodes-do-while.doWhile",
+      "typeVersion": 1,
+      "position": [640, 288],
+      "id": "a06223f1-deda-4afe-8277-e1c5fb9c375e",
+      "name": "Do...While: Poll Until Response"
+    },
+    {
+      "parameters": {
+        "url": "https://httpbin.org/delay/2",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "fd0c9465-dfc1-4ffc-9afd-064aabc183e6",
+      "name": "Call Delayed API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [864, 432]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "map-001",
+              "name": "success",
+              "value": "={{ $json.url !== undefined }}",
+              "type": "boolean"
+            },
+            {
+              "id": "map-002",
+              "name": "apiUrl",
+              "value": "={{ $json.url }}",
+              "type": "string"
+            },
+            {
+              "id": "map-003",
+              "name": "origin",
+              "value": "={{ $json.origin }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1088, 432],
+      "id": "map-response-001",
+      "name": "Map API Response"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "retry-r-001",
+              "name": "outcome",
+              "value": "={{ $json._loop.timedOut ? 'Failed after ' + $json._loop.max + ' attempts' : 'API responded on attempt ' + ($json._loop.iteration + 1) }}",
+              "type": "string"
+            },
+            {
+              "id": "retry-r-002",
+              "name": "timedOut",
+              "value": "={{ $json._loop.timedOut }}",
+              "type": "boolean"
+            },
+            {
+              "id": "retry-r-003",
+              "name": "totalAttempts",
+              "value": "={{ $json._loop.iteration + 1 }}",
+              "type": "number"
+            },
+            {
+              "id": "retry-r-004",
+              "name": "apiOrigin",
+              "value": "={{ $json.origin }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [864, 144],
+      "id": "49820c50-3b2c-49be-893c-a4f7933a8b7a",
+      "name": "Handle Outcome"
+    },
+    {
+      "parameters": {
+        "content": "## Poll a Live Delayed API Until Response\n\nThis workflow calls httpbin.org/delay/2 — a real public API that waits 2 seconds before responding. It simulates exactly what you face when polling a slow external service.\n\n**How it works:**\n1. Set Initial State sets success = false\n2. Do...While checks if success === true\n3. Since it is false on the first pass, items go to the Loop pin\n4. Call Delayed API hits httpbin.org and waits 2 seconds for a real response\n5. Map API Response sets success = true based on the API returning a url field\n6. Items loop back into Do...While\n7. Now success === true, so items exit via Condition Met\n8. Handle Outcome shows which attempt succeeded\n\n**To simulate a timeout:**\nChange Max Iterations on the Do...While node to 1 and set the condition to something that never becomes true like `={{ $json.success === false }}`. Items will exit with timedOut: true.",
+        "height": 380,
+        "width": 520,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [192, -160],
+      "id": "sticky-live-api",
+      "name": "How This Works"
+    },
+    {
+      "parameters": {
+        "content": "## httpbin.org/delay/2\n\nThis is a real public API endpoint that deliberately waits 2 seconds before responding. It is commonly used to test timeout and polling logic.\n\nChange the number at the end to control the delay in seconds. Max is 10.\n\nReplace this with your own API status endpoint in production.",
+        "height": 200,
+        "width": 340,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [840, 560],
+      "id": "sticky-httpbin",
+      "name": "About the API"
+    },
+    {
+      "parameters": {
+        "content": "## Map API Response\n\nhttpbin.org returns a JSON object containing a url field when the request succeeds. This node maps that response into a success boolean that the Do...While condition can evaluate.\n\nIn your real workflow, replace this with whatever field your API returns to indicate completion. For example:\n`success = $json.status === 'complete'`",
+        "height": 220,
+        "width": 340,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [1060, 560],
+      "id": "sticky-map",
+      "name": "Mapping the Response"
+    }
+  ],
+  "connections": {
+    "When clicking 'Execute workflow'": {
+      "main": [[{ "node": "Set Initial State", "type": "main", "index": 0 }]]
+    },
+    "Set Initial State": {
+      "main": [[{ "node": "Do...While: Poll Until Response", "type": "main", "index": 0 }]]
+    },
+    "Do...While: Poll Until Response": {
+      "main": [
+        [{ "node": "Handle Outcome", "type": "main", "index": 0 }],
+        [{ "node": "Call Delayed API", "type": "main", "index": 0 }]
+      ]
+    },
+    "Call Delayed API": {
+      "main": [[{ "node": "Map API Response", "type": "main", "index": 0 }]]
+    },
+    "Map API Response": {
+      "main": [[{ "node": "Do...While: Poll Until Response", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "meta": { "instanceId": "" }
+}
