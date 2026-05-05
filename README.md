@@ -5,70 +5,86 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![n8n community node](https://img.shields.io/badge/n8n-community%20node-orange)](https://www.npmjs.com/package/n8n-nodes-do-while)
 
-An n8n community node that brings the missing **do...while loop** to your workflows.
+The missing **while loop** for n8n. Loop between nodes, poll APIs, retry requests, and wait for conditions — all without writing a single line of code.
 
-Execute a set of nodes repeatedly until a condition you define is met, then continue. Built for polling APIs, retrying operations, waiting for async jobs, and any workflow that needs to keep running until something becomes true.
+If you have ever searched for "while loop n8n", "how to loop until condition in n8n", "polling loop n8n", or "how to retry HTTP request until success in n8n" — this node is the answer.
 
 ---
 
-## The problem this solves
+## The problem
 
-n8n's built-in **Loop Over Items** node iterates over a known list. But what if you do not have a list? What if you need to keep running until something happens?
+n8n has a Loop Over Items node, but it only iterates over a known list. There is no native while loop. There is no way to keep running a set of nodes until a condition is true.
 
-- A background job finishes processing
-- An API returns a specific status
-- A database record finally appears
-- A retry eventually succeeds
+This comes up constantly:
 
-That is a do...while loop. Every programming language has one. n8n did not, until now.
+- You need to poll an API every few seconds until a job finishes
+- You need to retry a failing HTTP request until it succeeds
+- You need to wait for a database record to appear before continuing
+- You need to loop between nodes — not over items — until something changes
+- You need recursion-like behavior without writing recursive code
+
+The usual workarounds are fragile. People wire together IF nodes, Wait nodes, and Code nodes to fake a while loop. It works until it does not. This node replaces all of that with a single clean solution.
+
+---
+
+## What it does
+
+**n8n-nodes-do-while** is a while loop node for n8n. It executes your connected nodes repeatedly — looping between them — until a condition you define evaluates to true. When the condition is met, the loop exits and your workflow continues.
+
+It is the equivalent of this in code:
+
+```javascript
+do {
+  result = checkStatus();
+} while (result.status !== 'done');
+
+continueWorkflow(result);
+```
+
+But visual, in n8n, with no code required.
 
 ---
 
 ## Installation
 
-In your n8n instance go to **Settings > Community Nodes > Install** and enter:
+In your n8n instance go to **Settings > Community Nodes > Install** and search for:
 
 ```
 n8n-nodes-do-while
 ```
 
-Or install manually on self-hosted:
+Or install manually on self-hosted n8n:
 
 ```bash
 cd ~/.n8n/nodes
 npm install n8n-nodes-do-while
 ```
 
-Restart n8n after installing. The node will appear in the nodes panel as **Do...While**.
+Restart n8n after installing. The node appears in the panel as **Do...While**.
 
 ---
 
-## How it works
+## How to wire it up
 
 The node has two output pins:
 
-| Pin | When it fires |
+| Pin | When items exit here |
 |---|---|
 | **Condition Met** | Your condition evaluated to true, or max iterations was reached |
-| **Loop** | Your condition is false. Connect this to your action nodes and route back into the Do...While input |
+| **Loop** | Your condition is false — connect this to your action nodes and route back into this node's input |
 
 ```
-[Your trigger or previous node]
+[previous node]
     |
     v
-[Do...While]
-    |-- Condition Met --> [continue your workflow]
-    |-- Loop ----------> [your action nodes] --> back to [Do...While]
+[Do...While]  <-----------------------------------------+
+    |                                                    |
+    |-- Condition Met --> [continue your workflow]       |
+    |                                                    |
+    |-- Loop --> [your action nodes] --------------------+
 ```
 
-Each item passing through gets a `_loop` object injected automatically:
-
-| Field | Type | Description |
-|---|---|---|
-| `$json._loop.iteration` | number | How many times this item has looped. Starts at 0. |
-| `$json._loop.first` | boolean | True on the very first iteration |
-| `$json._loop.max` | number | The max iterations you configured |
-| `$json._loop.timedOut` | boolean | True when the loop exits because max iterations was reached |
+This is a while loop between nodes. Items keep circulating through the Loop pin until the condition is true, then exit through Condition Met.
 
 ---
 
@@ -76,100 +92,103 @@ Each item passing through gets a `_loop` object injected automatically:
 
 | Parameter | Default | Description |
 |---|---|---|
-| **Condition** | `={{ $json.status === "done" }}` | An n8n expression that must return true to exit the loop |
-| **Max Iterations** | 10 | Safety cap to prevent infinite loops |
-| **Wait Between Iterations** | 1 second | How long to pause between each loop. Useful for polling. Set to 0 for no delay. |
-| **On Max Iterations Reached** | Exit with flag | Exit gracefully via Condition Met pin with `_loop.timedOut = true`, or throw an error |
+| **Condition** | `={{ $json.status === "done" }}` | Standard n8n expression. Evaluated against the data coming back into the node on each iteration. When true, exits via Condition Met. |
+| **Max Iterations** | 10 | Safety cap. Prevents infinite loops. When hit, items exit via Condition Met with `_loop.timedOut = true`. |
+| **Wait Between Iterations** | 1 second | Pause between each loop. Set to 5 or 10 seconds when polling slow APIs. Set to 0 for immediate retry logic. |
+| **On Max Iterations Reached** | Exit with flag | Exit gracefully (timedOut flag) or throw an error. |
 
 ---
 
-## Examples
+## Loop metadata
 
-### 1. Poll an API until a background job is complete
+Every item passing through the node gets a `_loop` object injected automatically. Use these fields in your condition or in downstream nodes:
 
-A common pattern when working with services that process data asynchronously. You start the job, then keep checking its status until it reports as done.
+| Field | Type | Description |
+|---|---|---|
+| `$json._loop.iteration` | number | How many times this item has looped. Starts at 0. |
+| `$json._loop.first` | boolean | True on the very first iteration. Useful for initialising state. |
+| `$json._loop.max` | number | The max iterations you configured. |
+| `$json._loop.timedOut` | boolean | True when the loop exits because max iterations was reached without the condition being met. |
+
+---
+
+## Use cases and examples
+
+These are the real scenarios people search for. Each one is a direct use of this while loop node.
+
+---
+
+### 1. While loop: poll an API until a job is complete
+
+The most common use case. You trigger a long-running job — video encoding, report generation, AI processing, file conversion — and need to keep checking its status until it reports as done.
+
+This replaces the "how do I build a polling loop in n8n" workaround.
 
 ```
-[HTTP Request: Start Job]
+[HTTP Request: start the job]
     |
     v
 [Do...While]
 condition: {{ $json.status === "complete" }}
 wait: 5 seconds
-max: 20
-    |-- Condition Met --> [HTTP Request: Fetch Results]
-    |-- Loop ----------> [HTTP Request: Check Job Status] --> back to [Do...While]
-```
-
-The `_loop.timedOut` field lets you handle the case where the job never completes:
-
-```
-[Do...While Condition Met]
+max iterations: 20
     |
-    v
-[IF: {{ $json._loop.timedOut === true }}]
-    |-- True  --> [Send alert: Job timed out]
-    |-- False --> [Process the results]
+    |-- Condition Met --> [HTTP Request: fetch the result]
+    |
+    |-- Loop --> [HTTP Request: GET /jobs/{id}/status] --> back to Do...While
 ```
+
+Real examples this solves:
+- Poll D-ID API until a video is ready (`status === "done"`)
+- Poll OpenAI Batch API until processing is complete (`status === "completed"`)
+- Poll Google TTS Long Audio API until audio is ready (`done === true`)
+- Poll Replicate API until an image is generated (`status === "succeeded"`)
+- Poll any async API that returns a job ID and a status field
 
 ---
 
-### 2. Retry a failing HTTP request until it succeeds
+### 2. While loop: retry an HTTP request until it succeeds
 
-Useful when calling unreliable third-party APIs that occasionally return errors.
+Retry logic in n8n without code. Keep calling an endpoint until it returns a successful response, then continue. Stop after a configurable number of attempts.
+
+This replaces "how to retry HTTP request until success n8n".
 
 ```
 [Do...While]
 condition: {{ $json.success === true }}
 wait: 3 seconds
-max: 5
-onMax: Throw Error
-    |-- Condition Met --> [continue]
-    |-- Loop ----------> [HTTP Request: retry the call] --> back to [Do...While]
+max iterations: 5
+on max: Throw Error
+    |
+    |-- Condition Met --> [continue workflow]
+    |
+    |-- Loop --> [HTTP Request: retry the call] --> back to Do...While
 ```
 
 ---
 
-### 3. Wait for a database record to appear
+### 3. While loop: wait for a database record to appear
 
-Poll a database query until a specific record exists before continuing.
+You are waiting for a record to be created by another system before your workflow can continue. Poll the database every 10 seconds until the record exists.
+
+This replaces "how to loop between nodes until condition is met n8n".
 
 ```
 [Do...While]
-condition: {{ $json.data.length > 0 }}
+condition: {{ $json.data !== null && $json.data.length > 0 }}
 wait: 10 seconds
-max: 12
+max iterations: 18
+    |
     |-- Condition Met --> [process the record]
-    |-- Loop ----------> [Postgres: SELECT * FROM jobs WHERE id = '123'] --> back to [Do...While]
+    |
+    |-- Loop --> [Postgres: SELECT * FROM orders WHERE id = '123'] --> back to Do...While
 ```
 
 ---
 
-### 4. Use with n8n-nodes-globals for configurable thresholds
+### 4. While loop: loop until a counter reaches a threshold
 
-[n8n-nodes-globals](https://www.npmjs.com/package/n8n-nodes-globals) lets you store global constants across all your workflows. Combine it with Do...While to make your loop thresholds configurable without touching the workflow itself.
-
-```
-[Global Constants: get MAX_POLL_ATTEMPTS]
-    |
-    v
-[Set: maxIterations = {{ $json.MAX_POLL_ATTEMPTS }}]
-    |
-    v
-[Do...While]
-condition: {{ $json.ready === true }}
-max: {{ $json.maxIterations }}
-    |-- Condition Met --> [continue]
-    |-- Loop ----------> [check status] --> back to [Do...While]
-```
-
-Change `MAX_POLL_ATTEMPTS` in your global constants and every workflow using this pattern updates automatically.
-
----
-
-### 5. Loop with a counter and exit on threshold
-
-Sometimes you want to loop a fixed number of times and do something different on each iteration based on the count.
+Run a set of nodes a specific number of times based on a counter, not a fixed list. The while loop equivalent of a for loop when you do not have items to iterate over.
 
 ```
 [Set: counter = 0]
@@ -178,91 +197,126 @@ Sometimes you want to loop a fixed number of times and do something different on
 [Do...While]
 condition: {{ $json._loop.iteration >= 5 }}
 wait: 0
-    |-- Condition Met --> [finished after 5 iterations]
-    |-- Loop ----------> [Code: process iteration $json._loop.iteration] --> back to [Do...While]
+    |
+    |-- Condition Met --> [finished]
+    |
+    |-- Loop --> [Code: do something on iteration {{ $json._loop.iteration }}] --> back to Do...While
 ```
 
 ---
 
-### 6. Polling with exponential backoff using the Code node
+### 5. While loop: conditional retry with recursion-like behaviour
 
-For robust production workflows, increase the wait time between retries instead of using a fixed interval. Combine Do...While with a Code node to calculate the delay dynamically.
+Implement recursion-like looping in n8n without recursive subworkflow calls. Run a node, check the result, and loop back if it does not meet your threshold.
+
+This replaces "how to implement recursion looping for HTTP requests in n8n".
 
 ```
 [Do...While]
-condition: {{ $json.status === "done" }}
-wait: 0
-max: 8
-    |-- Condition Met --> [continue]
-    |-- Loop ---------->
-        [Code: calculate backoff]
-        // Wait longer on each retry: 1s, 2s, 4s, 8s...
-        const delay = Math.pow(2, $json._loop.iteration) * 1000;
-        await new Promise(r => setTimeout(r, delay));
-        return $input.all();
-        |
-        v
-        [HTTP Request: check status]
-        |
-        back to [Do...While]
+condition: {{ $json.score >= 0.9 }}
+wait: 1 second
+max iterations: 10
+    |
+    |-- Condition Met --> [use the result]
+    |
+    |-- Loop --> [HTTP Request: regenerate] --> back to Do...While
 ```
 
 ---
 
-## The `_loop` metadata reference
+### 6. While loop: wait for an AI job to finish processing
 
-Every item that passes through Do...While has `_loop` added to its JSON automatically. You can reference these fields anywhere downstream:
+OpenAI deep research, Anthropic batch jobs, and other AI APIs are asynchronous. Start the job, then loop until the result is ready.
 
-```javascript
-// Check iteration count in a condition
-={{ $json._loop.iteration < 10 }}
-
-// Only do something on the first pass
-={{ $json._loop.first === true }}
-
-// Handle timeout separately from success
-={{ $json._loop.timedOut === true }}
-
-// Show progress in a notification
-={{ "Attempt " + ($json._loop.iteration + 1) + " of " + $json._loop.max }}
+```
+[HTTP Request: start AI job]
+    |
+    v
+[Do...While]
+condition: {{ $json.status === "completed" }}
+wait: 10 seconds
+max iterations: 30
+    |
+    |-- Condition Met --> [parse and use the AI result]
+    |
+    |-- Loop --> [HTTP Request: GET /batches/{id}] --> back to Do...While
 ```
 
 ---
 
-## Important: wiring the loop back
+### 7. Handle a timeout gracefully
 
-The **Loop** output pin must connect back to this node's input — directly or via other nodes. Without this connection the workflow ends without looping.
-
-```
-Do...While (Loop pin) --> [action nodes] --> Do...While (input)
-```
-
-This is by design. You decide exactly what runs inside each iteration.
-
----
-
-## Handling timeouts gracefully
-
-When max iterations is reached without the condition being met, items exit via the **Condition Met** pin with `_loop.timedOut` set to `true`. Use an IF node to branch based on this:
+When the job never finishes, you need to know and act on it. Use an IF node after the Condition Met pin to branch based on `_loop.timedOut`.
 
 ```
 [Do...While: Condition Met]
     |
     v
-[IF: {{ $json._loop.timedOut }}]
-    |-- True  --> [notify: operation timed out after N attempts]
+[IF: {{ $json._loop.timedOut === true }}]
+    |
+    |-- True  --> [send alert: operation timed out after {{ $json._loop.max }} attempts]
+    |
     |-- False --> [continue normally with the result]
 ```
 
-Alternatively, set **On Max Iterations Reached** to **Throw Error** if hitting the limit should always stop the workflow.
+---
+
+### 8. Use with n8n-nodes-globals for configurable thresholds
+
+Combine with [n8n-nodes-globals](https://www.npmjs.com/package/n8n-nodes-globals) to store your polling intervals and max attempt counts as global constants. Change them once and every workflow using this pattern updates automatically.
+
+```
+[Global Constants: get POLL_INTERVAL and MAX_ATTEMPTS]
+    |
+    v
+[Do...While]
+condition: {{ $json.ready === true }}
+wait: {{ $json.POLL_INTERVAL }}
+max: {{ $json.MAX_ATTEMPTS }}
+```
+
+---
+
+## Frequently asked questions
+
+**How is this different from the Loop Over Items node?**
+Loop Over Items iterates over a known list of items. Do...While loops until a condition is true regardless of how many items you have. Use Loop Over Items when you have a list. Use Do...While when you have a condition.
+
+**How do I implement a while loop in n8n?**
+Install this node. Set your condition. Connect the Loop pin to your action nodes and route them back into this node's input. That is your while loop.
+
+**How do I poll an API until it returns a specific status in n8n?**
+Use this node. Set the condition to check the status field (e.g. `{{ $json.status === "done" }}`), set a wait interval, and connect your HTTP Request node to the Loop pin.
+
+**How do I retry an HTTP request until it succeeds in n8n?**
+Use this node. Set the condition to `{{ $json.success === true }}` or whatever your API returns on success. Connect your HTTP Request node to the Loop pin with a short wait.
+
+**How do I loop between nodes in n8n until a condition is met?**
+This is exactly what this node does. Connect the Loop pin to whatever nodes should run on each iteration and route the output back into this node's input.
+
+**Will this cause an infinite loop?**
+No. The Max Iterations parameter is a hard cap. When hit, items exit through the Condition Met pin with `_loop.timedOut = true`. Set On Max Iterations Reached to Throw Error if you want the workflow to stop instead.
+
+**Does this work on n8n Cloud?**
+Yes, as a community node. Go to Settings > Community Nodes > Install and search for `n8n-nodes-do-while`.
+
+---
+
+## Important: wiring the loop back
+
+The **Loop** output pin must connect back to this node's input — directly or via other nodes. Without this connection the workflow ends after the first check without looping.
+
+```
+Do...While (Loop pin) --> [your action nodes] --> Do...While (input)
+```
 
 ---
 
 ## Compatibility
 
 - n8n version 0.198.0 and above
-- Works on self-hosted n8n (Community Edition and Enterprise)
-- Works on n8n Cloud (community nodes are supported as of mid-2025)
+- Self-hosted n8n (Community Edition and Enterprise)
+- n8n Cloud (community nodes supported)
 - No external dependencies
 
 ---
@@ -283,4 +337,4 @@ If you find a bug or want to request a feature, open an issue with a description
 
 ## About
 
-Built because n8n's Loop Over Items only works on known lists. For everything else, you need a do...while loop.
+Built because n8n's Loop Over Items only works on known lists. For everything else — polling, retrying, waiting, conditional looping between nodes — you need a while loop. Now n8n has one.
