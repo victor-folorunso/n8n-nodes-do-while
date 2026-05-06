@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-do-while",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "An n8n community node that implements a do...while loop — execute nodes repeatedly until a condition is met",
   "keywords": [
     "n8n-community-node-package",
